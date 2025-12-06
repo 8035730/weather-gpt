@@ -1,0 +1,8 @@
+{
+  "name": "WeatherGPT",
+  "description": "A premium-styled weather chatbot powered by Gemini, featuring real-time search grounding, historical data, and interactive forecast visualizations.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}

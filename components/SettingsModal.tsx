@@ -1,0 +1,110 @@
+
+
+import React from 'react';
+import { Settings, WeatherModel, VoiceName, Units, Theme } from '../types';
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  settings: Settings;
+  onSettingsChange: (newSettings: Settings) => void;
+  onGenerateBackground: () => void;
+  isGenerating: boolean;
+  generationError?: string | null;
+}
+
+const voices: { id: VoiceName; name: string }[] = [
+  { id: 'Zephyr', name: 'Zephyr (Default)' }, { id: 'Puck', name: 'Puck' },
+  { id: 'Kore', name: 'Kore' }, { id: 'Charon', name: 'Charon' }, { id: 'Fenrir', name: 'Fenrir' },
+];
+
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSettingsChange, onGenerateBackground, isGenerating, generationError }) => {
+  if (!isOpen) return null;
+
+  const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+    onSettingsChange({ ...settings, [key]: value });
+  };
+
+  const RadioGroup = ({ label, options, selected, onChange }: { label:string, options: {value: string, label: string}[], selected: string, onChange: (value: any) => void}) => (
+    <div>
+      <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">{label}</label>
+      <div className="flex space-x-2 rounded-lg bg-[color:var(--bg-input)] p-1">
+        {options.map(option => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`w-full rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+              selected === option.value ? 'bg-gemini-gradient text-white shadow' : 'text-[color:var(--text-secondary)] hover:bg-white/10'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-40 flex items-center justify-center" onClick={onClose}>
+      <div className="bg-[color:var(--bg-input)] rounded-xl shadow-2xl w-full max-w-md m-4 border border-[color:var(--border-color)] backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-[color:var(--border-color)]">
+          <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Settings</h2>
+          <p className="text-sm text-[color:var(--text-secondary)] mt-1">Customize your WeatherGPT experience.</p>
+        </div>
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <RadioGroup label="Theme" options={[{ value: 'diamond', label: 'Diamond' }, { value: 'sky', label: 'Sky' }]} selected={settings.theme} onChange={(v) => handleSettingChange('theme', v)} />
+          <RadioGroup label="Default Model" options={[{ value: 'fast', label: 'Fast' }, { value: 'advanced', label: 'Advanced' }]} selected={settings.defaultModel} onChange={(v) => handleSettingChange('defaultModel', v)} />
+          <RadioGroup label="Units" options={[{ value: 'metric', label: 'Metric' }, { value: 'imperial', label: 'Imperial' }]} selected={settings.units} onChange={(v) => handleSettingChange('units', v)} />
+          
+          <div>
+            <label className="flex items-center justify-between cursor-pointer mb-2">
+               <span className="block text-sm font-medium text-[color:var(--text-secondary)]">Conversational Voice Mode</span>
+               <input 
+                 type="checkbox" 
+                 checked={settings.conversationalMode} 
+                 onChange={(e) => handleSettingChange('conversationalMode', e.target.checked)}
+                 className="sr-only peer"
+               />
+               <div className="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <p className="text-xs text-[color:var(--text-secondary)]">Allows hands-free, continuous back-and-forth conversation.</p>
+          </div>
+
+          <div>
+            <label htmlFor="voice-select" className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">AI Voice</label>
+            <select id="voice-select" value={settings.voice} onChange={(e) => handleSettingChange('voice', e.target.value as VoiceName)} className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50">
+              {voices.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </div>
+          
+          <div className="border-t border-[color:var(--border-color)] pt-6">
+            <h3 className="text-md font-semibold text-[color:var(--text-primary)]">Custom Background</h3>
+            <p className="text-sm text-[color:var(--text-secondary)] mt-1 mb-4">Generate a unique background with Gemini.</p>
+            <textarea value={settings.backgroundPrompt} onChange={e => handleSettingChange('backgroundPrompt', e.target.value)} placeholder="e.g., A serene anime sky at dusk" className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50" rows={2}/>
+            
+            <div className="flex items-center gap-4 mt-4">
+              <button onClick={onGenerateBackground} disabled={isGenerating || !settings.backgroundPrompt} className="w-full px-4 py-2 bg-gemini-gradient text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                {isGenerating && <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-white" />}
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+             {generationError && (
+              <div className="mt-3 text-xs text-red-400 bg-red-500/10 p-2.5 rounded-md border border-red-500/20">
+                <span className="font-semibold">Generation Failed:</span> {generationError} <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline hover:text-red-300 font-medium">Learn more about billing.</a>
+              </div>
+            )}
+             {settings.backgroundType === 'custom' && settings.backgroundImage && (
+                <button onClick={() => handleSettingChange('backgroundType', 'default')} className="w-full mt-2 px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/20">Reset to Default</button>
+              )}
+          </div>
+
+        </div>
+        <div className="p-4 bg-[color:var(--bg-input)] text-right rounded-b-xl border-t border-[color:var(--border-color)]">
+          <button onClick={onClose} className="px-5 py-2 bg-gemini-gradient text-white text-sm font-medium rounded-lg shadow-lg hover:opacity-90">Done</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SettingsModal;
