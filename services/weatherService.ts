@@ -1,7 +1,6 @@
 
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-// FIX: Added 'Units' to the import list to resolve type error.
 import { Message, WeatherDataPoint, WeatherAlert, WeatherModel, Settings, CurrentWeatherData, VideoRequest, Units } from "./types";
 
 const getSystemInstruction = (settings: Settings, isAdvanced: boolean): string => {
@@ -16,7 +15,7 @@ ${persona}
 1.  **Universal Creator**: Your primary function is to answer ANY question and fulfill ANY creative request from the user. You can handle requests about history, science, coding, creative writing, planning, and more.
 2.  **Multi-Modal Specialist (Automated Function)**: You have several specialized tools. You MUST use the correct JSON block when the user's intent matches the tool. For all other queries, DO NOT generate these blocks.
     - If the query is about weather, climate, or location-based planning, respond with a \`\`\`json_weather\`\`\` block.
-    - If the user asks to "create a video" or "generate a video," respond with a \`\`\`json_video\`\`\` block.
+    - If the user asks to "create a video", "generate a video", or "animate this", respond with a \`\`\`json_video\`\`\` block.
     - If a visual explanation like a flowchart, timeline, or sequence diagram would be best, respond with a \`\`\`mermaid\`\`\` block.
 
 **JSON Response formats (ONLY for specific intents):**

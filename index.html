@@ -45,8 +45,8 @@
               'snow': 'snow 10s linear infinite',
               'cloud-drift-1': 'cloud-drift 60s linear infinite',
               'cloud-drift-2': 'cloud-drift 80s linear infinite reverse',
-              'pulse-puff-1': 'pulse-puff-1 8s ease-in-out infinite',
-              'pulse-puff-2': 'pulse-puff-2 7s ease-in-out infinite',
+              'pulse-puff-1': 'pulse-puff-1 4s ease-in-out infinite',
+              'pulse-puff-2': 'pulse-puff-2 5s ease-in-out infinite',
             },
             keyframes: {
               rain: {
@@ -62,12 +62,12 @@
                 '100%': { transform: 'translateX(100%)' },
               },
               'pulse-puff-1': {
-                '0%, 100%': { transform: 'scale(1) translateX(0)', opacity: 1 },
-                '50%': { transform: 'scale(1.05) translateX(5px)', opacity: 0.95 },
+                '0%, 100%': { transform: 'scale(1) translate(0, 0)', opacity: 0.9 },
+                '50%': { transform: 'scale(1.1) translate(5px, -5px)', opacity: 1 },
               },
               'pulse-puff-2': {
-                '0%, 100%': { transform: 'scale(1) translateY(0)', opacity: 1 },
-                '50%': { transform: 'scale(1.05) translateY(-5px)', opacity: 0.95 },
+                '0%, 100%': { transform: 'scale(1) translate(0, 0)', opacity: 0.9 },
+                '50%': { transform: 'scale(1.15) translate(-5px, 2px)', opacity: 1 },
               },
             }
           },
@@ -177,11 +177,11 @@
       }
       .cloud-input::before {
         width: 85px; height: 85px; top: -35px; left: 30px; border-radius: 52% 48% 50% 50%;
-        animation: pulse-puff-1 8s ease-in-out infinite;
+        animation: pulse-puff-1 4s ease-in-out infinite;
       }
       .cloud-input::after {
         width: 95px; height: 95px; top: -45px; right: 40px; border-radius: 48% 52% 50% 50%;
-        animation: pulse-puff-2 7s ease-in-out infinite;
+        animation: pulse-puff-2 5s ease-in-out infinite;
       }
       .cloud-input:focus-within {
         background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(250, 252, 255, 0.95) 100%);

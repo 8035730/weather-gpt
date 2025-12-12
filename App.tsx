@@ -11,7 +11,6 @@ import { streamResponse, parseModelResponse, generateTitle } from './services/we
 import { generateSpeech, playAudio } from './services/ttsService';
 import { generateBackgroundImage } from './services/imageService';
 import { generateVideo } from './services/videoService';
-// FIX: Changed import to 'getBackgroundClass' and updated usage below to match the function's return type.
 import { getBackgroundClass } from './utils/weatherBackgrounds';
 import { GenerateContentResponse } from '@google/genai';
 
