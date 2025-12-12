@@ -1,44 +1,61 @@
+
 import React from 'react';
-import { Message, Units, WeatherAlert } from '../types';
+import { Message, Units, WeatherAlert, Theme } from '../types';
 import WeatherChart from './WeatherChart';
 import AlertBanner from './AlertBanner';
 import CurrentConditions from './CurrentConditions';
 import DetailedMetrics from './DetailedMetrics';
 import Insights from './Insights';
 import LoadingSkeleton from './LoadingSkeleton';
+import Diagram from './Diagram';
+import VideoPlayer from './VideoPlayer';
 
 interface MessageItemProps {
   message: Message;
-  onPlayAudio: (messageId: string, text: string) => void;
+  theme: Theme;
+  onPlayAudio: (messageId: string, text: string, restart: boolean) => void;
   units: Units;
   dismissedAlerts: string[];
   onDismissAlert: (alertTitle: string) => void;
   onDismissAllAlerts: (alerts: WeatherAlert[]) => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, onPlayAudio, units, dismissedAlerts, onDismissAlert, onDismissAllAlerts }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, theme, onPlayAudio, units, dismissedAlerts, onDismissAlert, onDismissAllAlerts }) => {
   const isUser = message.role === 'user';
 
   const formatText = (text: string) => {
-    // Convert markdown lists to HTML lists
-    const htmlText = text
-      .replace(/(\n|^)- (.*?)(?=\n- |\n\n|$)/g, '$1<li>$2</li>')
-      .replace(/<\/li>(\n)?<li>/g, '</li><li>')
-      .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    let diagramIndex = 0;
+    const parts = text.split(/(\[DIAGRAM_PLACEHOLDER_\d+\])/);
 
-    const parts = htmlText.split(/(\*\*.*?\*\*|`.*?`|<ul>.*?<\/ul>)/gs);
-    
     return parts.map((part, index) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      const diagramMatch = part.match(/\[DIAGRAM_PLACEHOLDER_(\d+)\]/);
+      if (diagramMatch && message.diagrams) {
+        const dIndex = diagramIndex++;
+        if (message.diagrams[dIndex]) {
+          return <Diagram key={`diag-${index}`} code={message.diagrams[dIndex]} theme={theme} />;
+        }
+        return null;
       }
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return <code key={index} className="bg-black/20 px-1.5 py-0.5 rounded font-mono text-sm">{part.slice(1, -1)}</code>;
-      }
-      if (part.startsWith('<ul>')) {
-        return <div key={index} className="prose-ul:list-disc prose-ul:pl-6" dangerouslySetInnerHTML={{ __html: part }} />;
-      }
-      return <span key={index}>{part}</span>;
+
+      const htmlText = part
+        .replace(/(\n|^)- (.*?)(?=\n- |\n\n|$)/g, '$1<li>$2</li>')
+        .replace(/<\/li>(\n)?<li>/g, '</li><li>')
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+      
+      const subParts = htmlText.split(/(\*\*.*?\*\*|`.*?`|<ul>.*?<\/ul>)/gs);
+
+      return subParts.map((subPart, subIndex) => {
+        if (subPart.startsWith('**') && subPart.endsWith('**')) {
+          return <strong key={`${index}-${subIndex}`}>{subPart.slice(2, -2)}</strong>;
+        }
+        if (subPart.startsWith('`') && subPart.endsWith('`')) {
+          return <code key={`${index}-${subIndex}`} className="bg-black/20 px-1.5 py-0.5 rounded font-mono text-sm">{subPart.slice(1, -1)}</code>;
+        }
+        if (subPart.startsWith('<ul>')) {
+          return <div key={`${index}-${subIndex}`} className="prose-ul:list-disc prose-ul:pl-6" dangerouslySetInnerHTML={{ __html: subPart }} />;
+        }
+        return <span key={`${index}-${subIndex}`}>{subPart}</span>;
+      });
     });
   };
   
@@ -50,7 +67,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onPlayAudio, units, 
       case 'playing': icon = <svg viewBox="0 0 20 20" fill="currentColor"><path d="M7 5a3 3 0 013-3h.01a3 3 0 013 3v10a3 3 0 01-3 3h-.01a3 3 0 01-3-3V5zm4 0a1 1 0 00-2 0v10a1 1 0 102 0V5z"/></svg>; break;
       default: icon = <svg viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 019 4.11V15.89a1.5 1.5 0 01-2.7-1.27V4.111zM13.7 2.841A1.5 1.5 0 0116.5 4.11V15.89a1.5 1.5 0 01-2.7-1.27V4.111z" /></svg>;
     }
-    return <button onClick={() => onPlayAudio(message.id, message.content)} className="absolute -right-10 top-1 p-1 rounded-full text-[color:var(--text-secondary)] hover:bg-white/10 hover:text-[color:var(--text-primary)] transition-colors h-6 w-6">{icon}</button>;
+    return <button onClick={() => onPlayAudio(message.id, message.content, false)} className="absolute -right-10 top-1 p-1 rounded-full text-[color:var(--text-secondary)] hover:bg-white/10 hover:text-[color:var(--text-primary)] transition-colors h-6 w-6">{icon}</button>;
   }
   
   const visibleAlerts = message.alerts?.filter(alert => !dismissedAlerts.includes(alert.title)) || [];
@@ -90,6 +107,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onPlayAudio, units, 
           </div>
 
           {(message.hourlyData || message.dailyData) && <WeatherChart hourlyData={message.hourlyData} dailyData={message.dailyData} units={units} />}
+          
+          {message.videoResult && <VideoPlayer result={message.videoResult} />}
 
           {message.containsPlan && (
             <button onClick={() => navigator.clipboard.writeText(message.content)} className="mt-4 px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 rounded-md flex items-center gap-2">

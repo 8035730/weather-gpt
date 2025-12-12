@@ -1,7 +1,6 @@
 
-
 import React from 'react';
-import { Settings, WeatherModel, VoiceName, Units, Theme } from '../types';
+import { Settings, ImageSize } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,11 +12,6 @@ interface SettingsModalProps {
   generationError?: string | null;
 }
 
-const voices: { id: VoiceName; name: string }[] = [
-  { id: 'Zephyr', name: 'Zephyr (Default)' }, { id: 'Puck', name: 'Puck' },
-  { id: 'Kore', name: 'Kore' }, { id: 'Charon', name: 'Charon' }, { id: 'Fenrir', name: 'Fenrir' },
-];
-
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSettingsChange, onGenerateBackground, isGenerating, generationError }) => {
   if (!isOpen) return null;
 
@@ -28,7 +22,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const RadioGroup = ({ label, options, selected, onChange }: { label:string, options: {value: string, label: string}[], selected: string, onChange: (value: any) => void}) => (
     <div>
       <label className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">{label}</label>
-      <div className="flex space-x-2 rounded-lg bg-[color:var(--bg-input)] p-1">
+      <div className="flex space-x-2 rounded-lg bg-black/20 p-1">
         {options.map(option => (
           <button
             key={option.value}
@@ -49,7 +43,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
       <div className="bg-[color:var(--bg-input)] rounded-xl shadow-2xl w-full max-w-md m-4 border border-[color:var(--border-color)] backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b border-[color:var(--border-color)]">
           <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Settings</h2>
-          <p className="text-sm text-[color:var(--text-secondary)] mt-1">Customize your WeatherGPT experience.</p>
+          <p className="text-sm text-[color:var(--text-secondary)] mt-1">Customize your AI experience.</p>
         </div>
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           <RadioGroup label="Theme" options={[{ value: 'diamond', label: 'Diamond' }, { value: 'sky', label: 'Sky' }]} selected={settings.theme} onChange={(v) => handleSettingChange('theme', v)} />
@@ -72,16 +66,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
           <div>
             <label htmlFor="voice-select" className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">AI Voice</label>
-            <select id="voice-select" value={settings.voice} onChange={(e) => handleSettingChange('voice', e.target.value as VoiceName)} className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50">
-              {voices.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            <select id="voice-select" value={settings.voice} onChange={(e) => handleSettingChange('voice', e.target.value as any)} className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50">
+              <option value="Zephyr">Zephyr (Default)</option>
+              <option value="Puck">Puck</option>
+              <option value="Kore">Kore</option>
+              <option value="Charon">Charon</option>
+              <option value="Fenrir">Fenrir</option>
             </select>
           </div>
           
           <div className="border-t border-[color:var(--border-color)] pt-6">
             <h3 className="text-md font-semibold text-[color:var(--text-primary)]">Custom Background</h3>
-            <p className="text-sm text-[color:var(--text-secondary)] mt-1 mb-4">Generate a unique background with Gemini.</p>
+            <p className="text-sm text-[color:var(--text-secondary)] mt-1 mb-4">Generate a unique background with Gemini 3 Pro Image.</p>
             <textarea value={settings.backgroundPrompt} onChange={e => handleSettingChange('backgroundPrompt', e.target.value)} placeholder="e.g., A serene anime sky at dusk" className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50" rows={2}/>
             
+            <RadioGroup label="Image Size" options={[{ value: '1K', label: '1K' }, { value: '2K', label: '2K' }, { value: '4K', label: '4K' }]} selected={settings.imageSize} onChange={(v) => handleSettingChange('imageSize', v as ImageSize)} />
+
             <div className="flex items-center gap-4 mt-4">
               <button onClick={onGenerateBackground} disabled={isGenerating || !settings.backgroundPrompt} className="w-full px-4 py-2 bg-gemini-gradient text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 {isGenerating && <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-white" />}
@@ -94,7 +94,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
               </div>
             )}
              {settings.backgroundType === 'custom' && settings.backgroundImage && (
-                <button onClick={() => handleSettingChange('backgroundType', 'default')} className="w-full mt-2 px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/20">Reset to Default</button>
+                <button onClick={() => {
+                  handleSettingChange('backgroundType', 'default');
+                  handleSettingChange('backgroundImage', '');
+                  handleSettingChange('backgroundPrompt', '');
+                }} className="w-full mt-2 px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/20">Reset to Default</button>
               )}
           </div>
 

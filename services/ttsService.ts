@@ -1,7 +1,7 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-import { VoiceName } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { GoogleGenAI, Modality } from "@google/genai";
+import { VoiceName } from "./types";
+
 const outputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
 function decode(base64: string): Uint8Array {
@@ -36,8 +36,9 @@ async function decodeAudioData(
 
 export const generateSpeech = async (text: string, voice: VoiceName): Promise<AudioBuffer | null> => {
   if (!text.trim()) return null;
-
+  
   try {
+    const ai = new GoogleGenAI({ apiKey: (window as any).GEMINI_API_KEY });
     if (outputAudioContext.state === 'suspended') {
       await outputAudioContext.resume();
     }
