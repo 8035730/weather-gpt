@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Settings, ImageSize } from '../types';
 
@@ -63,6 +62,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                <div className="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
             <p className="text-xs text-[color:var(--text-secondary)]">Allows hands-free, continuous back-and-forth conversation.</p>
+          </div>
+
+          <div>
+             <label htmlFor="owm-key" className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">OpenWeatherMap API Key (Optional)</label>
+             <input 
+               id="owm-key"
+               type="password"
+               value={settings.openWeatherApiKey || ''}
+               onChange={(e) => handleSettingChange('openWeatherApiKey', e.target.value)}
+               placeholder="Key for advanced layers (Wind, Temp)"
+               className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50 text-sm"
+             />
+             <p className="text-xs text-[color:var(--text-secondary)] mt-1">Unlock Temperature, Wind, and Cloud layers. Precipitation layer is free.</p>
           </div>
 
           <div>

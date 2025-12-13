@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { VideoResult } from '../types';
 
@@ -17,7 +16,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ result }) => {
       const fetchVideo = async () => {
         try {
           // IMPORTANT: Append the API key to the URI for authorization
-          const response = await fetch(`${result.uri}&key=${(window as any).GEMINI_API_KEY}`);
+          const response = await fetch(`${result.uri}&key=${process.env.API_KEY}`);
           if (!response.ok) {
             throw new Error(`Failed to fetch video: ${response.statusText}`);
           }

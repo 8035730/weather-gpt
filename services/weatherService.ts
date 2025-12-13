@@ -1,20 +1,20 @@
 
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Message, WeatherDataPoint, WeatherAlert, WeatherModel, Settings, CurrentWeatherData, VideoRequest, Units } from "./types";
 
 const getSystemInstruction = (settings: Settings, isAdvanced: boolean): string => {
   const persona = isAdvanced 
-    ? `You are a hyper-intelligent Universal Assistant and creative polymath with access to the sum of public human knowledge via Google Search. You excel at deep reasoning, planning, and creative tasks, including acting as a video director and diagram creator.`
-    : `You are a fast and factual Universal Assistant connected to the live web.`;
+    ? `You are a Universal Intelligence and Meteorological Strategist. You possess the sum of human knowledge and can answer ANY question on ANY topic (coding, history, science, creative writing), but you view the world through a strategic, systems-oriented lens. You have specialized mastery in meteorology, geography, and logistics, enabling you to not just report data, but help users STRATEGIZE their lives around environmental factors.`
+    : `You are a fast, factual Universal Assistant and Weather Strategist connected to the live web. You answer all questions and provide strategic environmental insights.`;
 
   return `
 ${persona}
 
 **CORE MANDATE:**
 1.  **Universal Creator**: Your primary function is to answer ANY question and fulfill ANY creative request from the user. You can handle requests about history, science, coding, creative writing, planning, and more.
-2.  **Multi-Modal Specialist (Automated Function)**: You have several specialized tools. You MUST use the correct JSON block when the user's intent matches the tool. For all other queries, DO NOT generate these blocks.
-    - If the query is about weather, climate, or location-based planning, respond with a \`\`\`json_weather\`\`\` block.
+2.  **Strategic Context**: When relevant (travel, events, daily planning), proactively integrate weather, geography, and timing into your answers to provide a strategic edge.
+3.  **Multi-Modal Specialist (Automated Function)**: You have several specialized tools. You MUST use the correct JSON block when the user's intent matches the tool. For all other queries, DO NOT generate these blocks.
+    - If the query is about weather, climate, or location-based planning, respond with a \`\`\`json_weather\`\`\` block. **CRITICAL: You MUST include "latitude" and "longitude" in this block so the map can locate the area.**
     - If the user asks to "create a video", "generate a video", or "animate this", respond with a \`\`\`json_video\`\`\` block.
     - If a visual explanation like a flowchart, timeline, or sequence diagram would be best, respond with a \`\`\`mermaid\`\`\` block.
 
@@ -23,6 +23,8 @@ ${persona}
   \`\`\`json_weather
   {
     "location": "City, State/Country",
+    "latitude": number,
+    "longitude": number,
     "current": { "temperature": number, "feelsLike": number, "condition": "Short description", "summary": "A concise summary.", "sunrise": "HH:MM AM/PM", "sunset": "HH:MM AM/PM", "historicalAvg": number, "pressure": number, "humidity": number, "windSpeed": number, "windDirection": "NW", "uvIndex": number, "visibility": number, "aqi": number, "pollen": number, "dewPoint": number, "cloudCover": number },
     "hourly": [ { "time": "1 PM", "temperature": number, "feelsLike": number, "precipitation": number, "precipitationType": "'rain'|'snow'|'sleet'|'none'", "humidity": number, "windSpeed": number, "uvIndex": number, "cloudCover": number, "visibility": number, "pressure": number, "dewPoint": number, "aqi": number, "pollen": number, "historicalAvgTemp": number, "confidence": number } ],
     "daily": [ { "time": "Day", "temperature": number, "feelsLike": number, "precipitation": number, "precipitationType": "'rain'|'snow'|'sleet'|'none'", "humidity": number, "windSpeed": number, "uvIndex": number, "cloudCover": number, "visibility": number, "pressure": number, "dewPoint": number, "aqi": number, "pollen": number, "historicalAvgTemp": number, "confidence": number } ],
@@ -92,7 +94,7 @@ export const streamResponse = async (
   history: Message[],
   settings: Settings,
 ) => {
-  const ai = new GoogleGenAI({ apiKey: (window as any).GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const modelName = model === 'advanced' ? 'gemini-3-pro-preview' : 'gemini-2.5-flash';
   const isAdvanced = model === 'advanced';
   const systemInstruction = getSystemInstruction(settings, isAdvanced);
@@ -151,6 +153,8 @@ export const parseModelResponse = (text: string, settings: Settings): {
   videoRequest?: VideoRequest;
   containsPlan?: boolean; 
   location?: string;
+  latitude?: number;
+  longitude?: number;
 } => {
   let cleanedText = text;
 
@@ -188,13 +192,15 @@ export const parseModelResponse = (text: string, settings: Settings): {
     diagrams,
     videoRequest,
     containsPlan, 
-    location: parsedWeatherData.location 
+    location: parsedWeatherData.location,
+    latitude: parsedWeatherData.latitude,
+    longitude: parsedWeatherData.longitude
   };
 };
 
 export const generateTitle = async (firstMessage: string): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: (window as any).GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Generate a very short, concise title (max 5 words, no quotes) for a chat that starts with this user query: "${firstMessage}"`,

@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Modality } from "@google/genai";
 import { VoiceName } from "./types";
 
@@ -39,7 +38,7 @@ export const generateSpeech = async (text: string, voice: VoiceName): Promise<Au
   if (!text.trim()) return null;
   
   try {
-    const ai = new GoogleGenAI({ apiKey: (window as any).GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     if (outputAudioContext.state === 'suspended') {
       await outputAudioContext.resume();
     }

@@ -91,6 +91,8 @@ export interface Message {
   audioState?: 'idle' | 'loading' | 'playing';
   containsPlan?: boolean;
   location?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export type WeatherModel = 'fast' | 'advanced';
@@ -109,6 +111,7 @@ export interface Settings {
   backgroundImage: string;
   imageSize: ImageSize;
   conversationalMode: boolean;
+  openWeatherApiKey?: string;
 }
 
 export interface ChatSession {

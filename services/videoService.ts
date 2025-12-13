@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI } from "@google/genai";
 import { VideoResult } from "./types";
 
@@ -10,7 +9,7 @@ export const generateVideo = async (
 ) => {
   let ai: GoogleGenAI;
   try {
-    ai = new GoogleGenAI({ apiKey: (window as any).GEMINI_API_KEY });
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   } catch (error) {
     onUpdate({ status: 'error', error: 'Failed to initialize AI. Check API Key.' });
     throw error;

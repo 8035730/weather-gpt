@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import MessageItem from './components/MessageItem';
 import SettingsModal from './components/SettingsModal';
 import LocationSuggestions from './components/LocationSuggestions';
+import MapView from './components/MapView';
 import { ChatSession, Message, Settings, WeatherAlert, VideoResult } from './types';
 import { streamResponse, parseModelResponse, generateTitle } from './services/weatherService';
 import { generateSpeech, playAudio } from './services/ttsService';
@@ -30,6 +31,9 @@ const App: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapCoordinates, setMapCoordinates] = useState<{ lat: number, lng: number } | null>(null);
+  const [mapLocationName, setMapLocationName] = useState<string>('');
   
   const [settings, setSettings] = useState<Settings>({
     defaultModel: 'fast',
@@ -41,6 +45,7 @@ const App: React.FC = () => {
     backgroundImage: '',
     imageSize: '1K',
     conversationalMode: false,
+    openWeatherApiKey: ''
   });
 
   const [isListening, setIsListening] = useState(false);
@@ -61,6 +66,17 @@ const App: React.FC = () => {
   
   const lastWeatherMessage = [...messages].reverse().find(m => m.current);
   const backgroundClass = getBackgroundClass(lastWeatherMessage?.current?.condition);
+
+  // Update map coordinates when new weather data arrives
+  useEffect(() => {
+    if (lastWeatherMessage?.latitude && lastWeatherMessage?.longitude) {
+      setMapCoordinates({ lat: lastWeatherMessage.latitude, lng: lastWeatherMessage.longitude });
+      setMapLocationName(lastWeatherMessage.location || '');
+    } else if (userLocation && !mapCoordinates) {
+        setMapCoordinates({ lat: userLocation.latitude, lng: userLocation.longitude });
+        setMapLocationName('Current Location');
+    }
+  }, [lastWeatherMessage, userLocation]);
 
   useEffect(() => {
     isConversationalModeRef.current = settings.conversationalMode;
@@ -273,8 +289,10 @@ const App: React.FC = () => {
       
       updateMessages(sessId, msgs => msgs.map(m => m.id === aiMessageId ? finalMessage : m));
       
-      if (parsed.location && !locationHistory.includes(parsed.location)) {
-        setLocationHistory(prev => [parsed.location, ...prev].slice(0, 15));
+      if (parsed.location) {
+        if (!locationHistory.includes(parsed.location)) {
+            setLocationHistory(prev => [parsed.location!, ...prev].slice(0, 15));
+        }
       }
       
       if (parsed.videoRequest) {
@@ -351,6 +369,9 @@ const App: React.FC = () => {
   
   const chatInputForm = (
      <form id="chat-form" onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }} className={`relative flex items-center w-full p-2 pr-3 rounded-xl border border-[color:var(--border-color)] shadow-md focus-within:ring-2 ring-blue-500/50 ${settings.theme === 'sky' ? 'cloud-input' : 'bg-[color:var(--bg-input)] backdrop-blur-md'}`}>
+        <button type="button" onClick={() => setIsMapOpen(true)} className={`p-2 mr-1 rounded-full text-[color:var(--text-secondary)] hover:bg-white/10 hover:text-[color:var(--text-primary)] transition-colors`} title="Open Weather Map">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+        </button>
         <button type="button" onClick={toggleListening} className={`p-2 mr-2 rounded-full transition-colors ${isListening ? 'bg-red-500/50 text-red-300 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-white/5'}`} disabled={!recognition} title={isListening ? "Stop listening" : "Start voice mode"}>
           <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" className="h-5 w-5"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"></path></svg>
         </button>
@@ -414,6 +435,16 @@ const App: React.FC = () => {
         isGenerating={isLoading}
         generationError={imageGenerationError}
       />
+
+      {isMapOpen && mapCoordinates && (
+          <MapView 
+            latitude={mapCoordinates.lat} 
+            longitude={mapCoordinates.lng} 
+            onClose={() => setIsMapOpen(false)} 
+            openWeatherApiKey={settings.openWeatherApiKey}
+            locationName={mapLocationName}
+          />
+      )}
 
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
         <div className="flex items-center p-2 text-[color:var(--text-primary)] bg-[color:var(--bg-main)]/80 backdrop-blur-sm border-b border-[color:var(--border-color)] md:hidden z-10">
