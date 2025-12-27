@@ -1,5 +1,4 @@
 
-
 export interface GroundingChunk {
   web?: {
     uri: string;
@@ -73,6 +72,17 @@ export interface VideoResult {
   progress?: number;
 }
 
+export interface ImageRequest {
+  prompt: string;
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+}
+
+export interface ImageResult {
+  status: 'generating' | 'done' | 'error';
+  url?: string;
+  error?: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -88,11 +98,17 @@ export interface Message {
   diagrams?: string[];
   videoRequest?: VideoRequest;
   videoResult?: VideoResult;
+  imageRequest?: ImageRequest;
+  imageResult?: ImageResult;
   audioState?: 'idle' | 'loading' | 'playing';
   containsPlan?: boolean;
   location?: string;
   latitude?: number;
   longitude?: number;
+  attachment?: {
+    data: string;
+    mimeType: string;
+  };
 }
 
 export type WeatherModel = 'fast' | 'advanced';
@@ -112,6 +128,7 @@ export interface Settings {
   imageSize: ImageSize;
   conversationalMode: boolean;
   openWeatherApiKey?: string;
+  tomorrowIoApiKey?: string;
 }
 
 export interface ChatSession {

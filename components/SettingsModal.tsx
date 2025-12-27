@@ -27,7 +27,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
-            className={`w-full rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+            className={`w-full rounded-md px-3 py-1.5 text-xs md:text-sm font-medium transition-all ${
               selected === option.value ? 'bg-gemini-gradient text-white shadow' : 'text-[color:var(--text-secondary)] hover:bg-white/10'
             }`}
           >
@@ -47,7 +47,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         </div>
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
           <RadioGroup label="Theme" options={[{ value: 'diamond', label: 'Diamond' }, { value: 'sky', label: 'Sky' }]} selected={settings.theme} onChange={(v) => handleSettingChange('theme', v)} />
-          <RadioGroup label="Default Model" options={[{ value: 'fast', label: 'Fast' }, { value: 'advanced', label: 'Advanced' }]} selected={settings.defaultModel} onChange={(v) => handleSettingChange('defaultModel', v)} />
+          <RadioGroup 
+            label="Active Brain" 
+            options={[
+              { value: 'fast', label: 'Gemini 2.5' }, 
+              { value: 'advanced', label: 'Gemini Ultra' }
+            ]} 
+            selected={settings.defaultModel} 
+            onChange={(v) => handleSettingChange('defaultModel', v)} 
+          />
           <RadioGroup label="Units" options={[{ value: 'metric', label: 'Metric' }, { value: 'imperial', label: 'Imperial' }]} selected={settings.units} onChange={(v) => handleSettingChange('units', v)} />
           
           <div>
@@ -64,17 +72,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             <p className="text-xs text-[color:var(--text-secondary)]">Allows hands-free, continuous back-and-forth conversation.</p>
           </div>
 
-          <div>
-             <label htmlFor="owm-key" className="block text-sm font-medium text-[color:var(--text-secondary)] mb-2">OpenWeatherMap API Key (Optional)</label>
-             <input 
-               id="owm-key"
-               type="password"
-               value={settings.openWeatherApiKey || ''}
-               onChange={(e) => handleSettingChange('openWeatherApiKey', e.target.value)}
-               placeholder="Key for advanced layers (Wind, Temp)"
-               className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50 text-sm"
-             />
-             <p className="text-xs text-[color:var(--text-secondary)] mt-1">Unlock Temperature, Wind, and Cloud layers. Precipitation layer is free.</p>
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-[color:var(--text-primary)] pt-2">API Keys</h3>
+            <div>
+               <label htmlFor="owm-key" className="block text-xs font-medium text-[color:var(--text-secondary)] mb-1">OpenWeatherMap API Key (Optional)</label>
+               <input 
+                 id="owm-key"
+                 type="password"
+                 value={settings.openWeatherApiKey || ''}
+                 onChange={(e) => handleSettingChange('openWeatherApiKey', e.target.value)}
+                 placeholder="Unlock Temp & Wind layers"
+                 className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50 text-sm"
+               />
+            </div>
+            
+            <div>
+               <label htmlFor="tomorrow-key" className="block text-xs font-medium text-[color:var(--text-secondary)] mb-1">Tomorrow.io API Key (Optional)</label>
+               <input 
+                 id="tomorrow-key"
+                 type="password"
+                 value={settings.tomorrowIoApiKey || ''}
+                 onChange={(e) => handleSettingChange('tomorrowIoApiKey', e.target.value)}
+                 placeholder="Unlock 10+ Premium layers"
+                 className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50 text-sm"
+               />
+               <p className="text-xs text-[color:var(--text-secondary)] mt-1">Access high-res layers: Humidity, Cloud Cover, Visibility, etc.</p>
+            </div>
           </div>
 
           <div>
@@ -90,11 +113,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
           
           <div className="border-t border-[color:var(--border-color)] pt-6">
             <h3 className="text-md font-semibold text-[color:var(--text-primary)]">Custom Background</h3>
-            <p className="text-sm text-[color:var(--text-secondary)] mt-1 mb-4">Generate a unique background with Gemini 3 Pro Image.</p>
+            <p className="text-sm text-[color:var(--text-secondary)] mt-1 mb-4">Generate a unique background with Gemini 2.5 Flash Image.</p>
             <textarea value={settings.backgroundPrompt} onChange={e => handleSettingChange('backgroundPrompt', e.target.value)} placeholder="e.g., A serene anime sky at dusk" className="w-full bg-[color:var(--bg-input)] border border-[color:var(--border-color)] rounded-lg px-3 py-2 text-[color:var(--text-primary)] focus:outline-none focus:ring-2 ring-blue-500/50" rows={2}/>
             
-            <RadioGroup label="Image Size" options={[{ value: '1K', label: '1K' }, { value: '2K', label: '2K' }, { value: '4K', label: '4K' }]} selected={settings.imageSize} onChange={(v) => handleSettingChange('imageSize', v as ImageSize)} />
-
             <div className="flex items-center gap-4 mt-4">
               <button onClick={onGenerateBackground} disabled={isGenerating || !settings.backgroundPrompt} className="w-full px-4 py-2 bg-gemini-gradient text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 {isGenerating && <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-white" />}

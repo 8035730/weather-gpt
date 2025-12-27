@@ -1,25 +1,62 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { Message, WeatherDataPoint, WeatherAlert, WeatherModel, Settings, CurrentWeatherData, VideoRequest, Units } from "./types";
+import { GoogleGenAI, GenerateContentResponse, Type, Modality } from "@google/genai";
+import { Message, WeatherDataPoint, WeatherAlert, WeatherModel, Settings, CurrentWeatherData, VideoRequest, ImageRequest, Units } from "../types";
 
-const getSystemInstruction = (settings: Settings, isAdvanced: boolean): string => {
-  const persona = isAdvanced 
-    ? `You are a Universal Intelligence and Meteorological Strategist. You possess the sum of human knowledge and can answer ANY question on ANY topic (coding, history, science, creative writing), but you view the world through a strategic, systems-oriented lens. You have specialized mastery in meteorology, geography, and logistics, enabling you to not just report data, but help users STRATEGIZE their lives around environmental factors.`
-    : `You are a fast, factual Universal Assistant and Weather Strategist connected to the live web. You answer all questions and provide strategic environmental insights.`;
+// Define the Virtual MCP Context to structure the Agent's reasoning capabilities
+const getMCPContext = () => `
+**SYSTEM ARCHITECTURE: AGENTIC MCP NODE**
+
+You are **WeatherGPT**, an autonomous research agent operating on a virtual Model Context Protocol (MCP) bus. You do not just "answer" questions; you Orchestrate, Research, and Synthesize using connected MCP Servers.
+
+**CONNECTED MCP SERVERS:**
+1.  **[server: google_search]**:
+    *   *Capability*: Real-time web indexing, news aggregation, fact verification.
+    *   *Trigger*: Any query requiring up-to-date information, checking events, or verifying locations.
+    *   *Agentic Strategy*: For complex queries, perform multiple distinct searches to triangulate the truth.
+
+2.  **[server: google_maps]**:
+    *   *Capability*: Spatial reasoning, geocoding, business lookups, routing.
+    *   *Trigger*: "Where is...", "Distance to...", "Near me...", specific city names.
+
+3.  **[server: frontend_renderer]**:
+    *   *Capability*: Renders specialized UI widgets on the client.
+    *   *Tools*:
+        *   \`json_weather\`: For displaying meteorological data.
+        *   \`json_video\`: For requesting the Veo video generation engine.
+        *   \`json_image\`: For requesting Imagen 3 generation.
+        *   \`mermaid\`: For rendering logic flows or timelines.
+
+**AGENTIC SEARCH PROTOCOL:**
+When you receive a user prompt, you must follow this internal loop:
+1.  **Intent Classification**: Which MCP servers are required?
+2.  **Research Plan**: If the query is complex (e.g., "Weather in Tokyo vs NYC"), break it down.
+3.  **Tool Execution**: Use \`googleSearch\` or \`googleMaps\` tools provided by the API.
+4.  **Synthesis**: Combine raw data into a coherent strategic answer.
+5.  **Widget Selection**: Select the appropriate JSON format for the [frontend_renderer].
+`;
+
+const getSystemInstruction = (settings: Settings, model: WeatherModel): string => {
+  let persona = '';
+  
+  if (model === 'advanced') {
+    persona = `**Identity**: You are the **WeatherGPT Pro Agent**. You utilize multi-step reasoning. You are strategic, concise, and highly intelligent. You prefer density of information over fluff.`;
+  } else {
+    persona = `**Identity**: You are **WeatherGPT Flash**. You are a fast, efficient agent focused on quick data retrieval and immediate helpfulness.`;
+  }
 
   return `
+${getMCPContext()}
+
 ${persona}
 
-**CORE MANDATE:**
-1.  **Universal Creator**: Your primary function is to answer ANY question and fulfill ANY creative request from the user. You can handle requests about history, science, coding, creative writing, planning, and more.
-2.  **Strategic Context**: When relevant (travel, events, daily planning), proactively integrate weather, geography, and timing into your answers to provide a strategic edge.
-3.  **Multi-Modal Specialist (Automated Function)**: You have several specialized tools. You MUST use the correct JSON block when the user's intent matches the tool. For all other queries, DO NOT generate these blocks.
-    - If the query is about weather, climate, or location-based planning, respond with a \`\`\`json_weather\`\`\` block. **CRITICAL: You MUST include "latitude" and "longitude" in this block so the map can locate the area.**
-    - If the user asks to "create a video", "generate a video", or "animate this", respond with a \`\`\`json_video\`\`\` block.
-    - If a visual explanation like a flowchart, timeline, or sequence diagram would be best, respond with a \`\`\`mermaid\`\`\` block.
+**CORE RENDERING RULES (CRITICAL):**
+You MUST use the following JSON formats to communicate with the [frontend_renderer]. Do not invent new schemas.
 
-**JSON Response formats (ONLY for specific intents):**
-- **Weather/Location:**
+- **Weather/Location Intent**:
+  If the user asks about weather, location, or travel planning, you MUST output a \`\`\`json_weather\`\`\` block.
+  **CRITICAL:** You MUST include "latitude" and "longitude" in this block. Use [google_maps] logic to find these coordinates if not provided.
+  
+  Format:
   \`\`\`json_weather
   {
     "location": "City, State/Country",
@@ -29,27 +66,41 @@ ${persona}
     "hourly": [ { "time": "1 PM", "temperature": number, "feelsLike": number, "precipitation": number, "precipitationType": "'rain'|'snow'|'sleet'|'none'", "humidity": number, "windSpeed": number, "uvIndex": number, "cloudCover": number, "visibility": number, "pressure": number, "dewPoint": number, "aqi": number, "pollen": number, "historicalAvgTemp": number, "confidence": number } ],
     "daily": [ { "time": "Day", "temperature": number, "feelsLike": number, "precipitation": number, "precipitationType": "'rain'|'snow'|'sleet'|'none'", "humidity": number, "windSpeed": number, "uvIndex": number, "cloudCover": number, "visibility": number, "pressure": number, "dewPoint": number, "aqi": number, "pollen": number, "historicalAvgTemp": number, "confidence": number } ],
     "alerts": [ { "severity": "'Warning'|'Advisory'|'Watch'|'Statement'", "title": "Title", "description": "Text" } ],
-    "insights": [ "Tip 1", "Tip 2" ]
+    "insights": [ "Strategic Insight 1", "Strategic Insight 2" ]
   }
   \`\`\`
-- **Video Generation:**
+
+- **Visual Creation Intent**:
+  If the user asks to "generate", "create", "draw", or "render" media:
+  
+  For Images:
+  \`\`\`json_image
+  {
+    "prompt": "A detailed, artistic prompt describing the scene.",
+    "aspectRatio": "'1:1'|'3:4'|'4:3'|'9:16'|'16:9'"
+  }
+  \`\`\`
+
+  For Videos (Veo):
   \`\`\`json_video
   {
-    "prompt": "A detailed, descriptive prompt for the Veo video model. For example: 'A majestic cinematic shot of a futuristic city with flying cars at sunset, high detail, 8k'.",
+    "prompt": "A cinematic prompt for the video model.",
     "aspectRatio": "'16:9' or '9:16'"
   }
   \`\`\`
-- **Diagram Generation:**
+
+- **Logic/Diagram Intent**:
+  For explanations requiring structure (timelines, process flows):
   \`\`\`mermaid
   graph TD;
-      A[Start] --> B{Is it sunny?};
-      B -- Yes --> C[Go to the park];
-      B -- No --> D[Stay inside];
+      A[Start] --> B[Step];
   \`\`\`
+  *Constraint:* No HTML tags in Mermaid labels.
 
-**General Rules:**
-- For the text part of your response (outside the JSON), use Markdown.
-- Use Google Search and Maps to fetch real-time data for all relevant queries.
+**RESPONSE GUIDELINES:**
+1.  **Markdown**: Use Markdown for all text outside JSON blocks.
+2.  **Citations**: When using [google_search], the system will automatically append citations. You do not need to manually format links, but refer to sources in your text.
+3.  **Proactivity**: If the weather is bad, suggest indoor activities. If good, suggest outdoor spots (using [google_maps] knowledge).
 `;
 };
 
@@ -95,31 +146,108 @@ export const streamResponse = async (
   settings: Settings,
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const modelName = model === 'advanced' ? 'gemini-3-pro-preview' : 'gemini-2.5-flash';
-  const isAdvanced = model === 'advanced';
-  const systemInstruction = getSystemInstruction(settings, isAdvanced);
+  
+  // Model Selection Logic
+  let modelName = 'gemini-2.5-flash';
+  let isAdvanced = false;
 
-  const config: any = { systemInstruction };
+  if (model === 'advanced') {
+    modelName = 'gemini-3-pro-preview';
+    isAdvanced = true;
+  }
+
+  const systemInstruction = getSystemInstruction(settings, model);
+
+  const config: any = { 
+    systemInstruction,
+    // Enable search for Agentic research capabilities
+    tools: [{ googleSearch: {} }],
+  };
   
   if (isAdvanced) {
     config.thinkingConfig = { thinkingBudget: 32768 };
   }
   
-  config.tools = [{ googleSearch: {} }, { googleMaps: {} }];
-  if (userLocation) {
-    config.toolConfig = { retrievalConfig: { latLng: userLocation } };
+  // Add Maps tool for spatial reasoning if supported by the model (2.5 series or future supported models)
+  if (modelName.startsWith('gemini-2.5')) {
+     if (!config.tools) config.tools = [];
+     config.tools.push({ googleMaps: {} });
+
+     if (userLocation) {
+        config.toolConfig = { 
+            retrievalConfig: { 
+                latLng: { 
+                    latitude: userLocation.latitude, 
+                    longitude: userLocation.longitude 
+                } 
+            } 
+        };
+     }
   }
 
-  const contents = history.map(m => ({
-    role: m.role,
-    parts: [{ text: m.content }],
-  }));
+  const contents = history.map(m => {
+    const parts: any[] = [{ text: m.content }];
+    if (m.attachment) {
+      parts.unshift({
+        inlineData: {
+          data: m.attachment.data.split(',')[1],
+          mimeType: m.attachment.mimeType
+        }
+      });
+    }
+    return { role: m.role, parts };
+  });
 
   return ai.models.generateContentStream({
     model: modelName,
     contents: contents,
     config: config,
   });
+};
+
+/**
+ * Fetches a detailed forecast and historical analysis using the Agentic Loop.
+ */
+export const getPointForecast = async (
+  lat: number, 
+  lng: number, 
+  settings: Settings
+): Promise<any> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // Agentic prompt requiring multi-source synthesis
+  const prompt = `
+  **AGENTIC TASK: MICRO-CLIMATE ANALYSIS**
+  
+  Target Coordinates: (${lat}, ${lng})
+  
+  1. **Research**: Analyze current weather stations near this point.
+  2. **Context**: Compare with historical climate data for this specific day.
+  3. **Synthesize**: Generate a JSON forecast object.
+  
+  Return ONLY the JSON format:
+  {
+    "location": "Specific Area Name",
+    "current": { "temperature": number, "condition": "Brief status", "historicalAvg": number },
+    "hourly": [ { "time": "1 PM", "temperature": number, "condition": "Status" } ],
+    "historicalContext": "One sentence comparing today to historical averages."
+  }`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json"
+    }
+  });
+
+  try {
+    const data = JSON.parse(response.text || '{}');
+    return convertDataUnits(data, settings.units);
+  } catch (e) {
+    console.error("Failed to parse point forecast", e);
+    return null;
+  }
 };
 
 const extractJson = (text: string, blockType: string) => {
@@ -151,6 +279,7 @@ export const parseModelResponse = (text: string, settings: Settings): {
   insights?: string[]; 
   diagrams?: string[];
   videoRequest?: VideoRequest;
+  imageRequest?: ImageRequest;
   containsPlan?: boolean; 
   location?: string;
   latitude?: number;
@@ -160,6 +289,7 @@ export const parseModelResponse = (text: string, settings: Settings): {
 
   const weatherData = extractJson(text, 'json_weather');
   const videoRequest = extractJson(text, 'json_video');
+  const imageRequest = extractJson(text, 'json_image');
   const diagrams = extractDiagrams(text);
   
   let parsedWeatherData: any = {};
@@ -172,12 +302,17 @@ export const parseModelResponse = (text: string, settings: Settings): {
     cleanedText = cleanedText.replace(/```json_video[\s\S]*?```/, '').trim();
   }
 
+  if (imageRequest) {
+    cleanedText = cleanedText.replace(/```json_image[\s\S]*?```/, '').trim();
+  }
+
   if (diagrams.length > 0) {
     let i = 0;
     cleanedText = cleanedText.replace(/```mermaid[\s\S]*?```/g, () => `[DIAGRAM_PLACEHOLDER_${i++}]`).trim();
   }
   
-  const containsPlan = /(^#{1,3}\s.*$)|(^\s*-\s)|(^\s*\*\s)|(^\s*\d+\.\s)/m.test(cleanedText);
+  // Enhanced detection for Agentic Plans
+  const containsPlan = /(^#{1,3}\s.*Plan.*$)|(^\*\*Research Plan:\*\*)|(^\s*-\s)|(^\s*\*\s)|(^\s*\d+\.\s)/mi.test(cleanedText);
 
   const radarRegex = /(https?:\/\/[^\s]*radar[^\s]*)/gi;
   cleanedText = cleanedText.replace(radarRegex, (url) => `\n[View Local Weather Radar](${url})\n`);
@@ -191,6 +326,7 @@ export const parseModelResponse = (text: string, settings: Settings): {
     insights: parsedWeatherData.insights, 
     diagrams,
     videoRequest,
+    imageRequest,
     containsPlan, 
     location: parsedWeatherData.location,
     latitude: parsedWeatherData.latitude,

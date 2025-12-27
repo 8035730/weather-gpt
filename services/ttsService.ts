@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
-import { VoiceName } from "./types";
+// Fixed incorrect relative import for types
+import { VoiceName } from "../types";
 
 const outputAudioContext = new ((window as any).AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 

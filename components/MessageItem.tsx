@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Message, Units, WeatherAlert, Theme } from '../types';
 import WeatherChart from './WeatherChart';
@@ -10,6 +9,7 @@ import Insights from './Insights';
 import LoadingSkeleton from './LoadingSkeleton';
 import Diagram from './Diagram';
 import VideoPlayer from './VideoPlayer';
+import ImageDisplay from './ImageDisplay';
 
 interface MessageItemProps {
   message: Message;
@@ -19,9 +19,19 @@ interface MessageItemProps {
   dismissedAlerts: string[];
   onDismissAlert: (alertTitle: string) => void;
   onDismissAllAlerts: (alerts: WeatherAlert[]) => void;
+  onGenerateVideo?: (messageId: string, prompt: string, aspectRatio: '16:9' | '9:16') => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, theme, onPlayAudio, units, dismissedAlerts, onDismissAlert, onDismissAllAlerts }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ 
+  message, 
+  theme, 
+  onPlayAudio, 
+  units, 
+  dismissedAlerts, 
+  onDismissAlert, 
+  onDismissAllAlerts,
+  onGenerateVideo
+}) => {
   const isUser = message.role === 'user';
 
   const formatText = (text: string) => {
@@ -90,6 +100,12 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, theme, onPlayAudio, 
           <AudioButton />
           
           {message.isStreaming && (!message.current && !message.hourlyData) && <LoadingSkeleton />}
+
+          {isUser && message.attachment && (
+            <div className="mb-3 rounded-xl overflow-hidden max-w-[240px] border border-white/10">
+              <img src={message.attachment.data} alt="Attachment" className="w-full h-auto" />
+            </div>
+          )}
           
           <AlertBanner alerts={visibleAlerts} onDismiss={onDismissAlert} onDismissAll={() => onDismissAllAlerts(visibleAlerts)} />
           
@@ -97,7 +113,12 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, theme, onPlayAudio, 
 
           {message.current && (
             <>
-              <CurrentConditions data={message.current} units={units} />
+              <CurrentConditions 
+                data={message.current} 
+                units={units} 
+                location={message.location} 
+                onGenerateVideo={(prompt) => onGenerateVideo?.(message.id, prompt, '16:9')}
+              />
               <DetailedMetrics data={message.current} units={units} />
             </>
           )}
@@ -108,6 +129,8 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, theme, onPlayAudio, 
           </div>
 
           {(message.hourlyData || message.dailyData) && <WeatherChart hourlyData={message.hourlyData} dailyData={message.dailyData} units={units} />}
+          
+          {message.imageResult && <ImageDisplay result={message.imageResult} prompt={message.imageRequest?.prompt || ""} />}
           
           {message.videoResult && <VideoPlayer result={message.videoResult} />}
 
