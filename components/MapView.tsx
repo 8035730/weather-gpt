@@ -64,6 +64,7 @@ const MapView: React.FC<MapViewProps> = ({ latitude, longitude, onClose, openWea
     } else {
         setFrames([]);
         setFrameIndex(-1);
+        setIsPlaying(false);
     }
   }, [activeProvider]);
 
@@ -176,55 +177,17 @@ const MapView: React.FC<MapViewProps> = ({ latitude, longitude, onClose, openWea
       }
   }, [activeProvider, activeLayer, frames, frameIndex, layerOpacity, openWeatherApiKey, tomorrowIoApiKey]);
 
-  // Animation logic
+  // Animation logic - 500ms loop for better radar visualization
   useEffect(() => {
     if (isPlaying) {
       playIntervalRef.current = window.setInterval(() => {
         setFrameIndex(prev => (prev + 1) % frames.length);
-      }, 1000);
+      }, 500);
     } else if (playIntervalRef.current) {
       clearInterval(playIntervalRef.current);
     }
     return () => { if (playIntervalRef.current) clearInterval(playIntervalRef.current); };
   }, [isPlaying, frames.length]);
-
-  const TimeMachine = () => {
-    if (frames.length === 0 || activeProvider !== 'rainviewer') return null;
-    
-    const currentFrame = frames[frameIndex];
-    const date = currentFrame ? new Date(currentFrame.time * 1000) : null;
-    const timeString = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    
-    return (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-2xl pointer-events-auto z-20 flex items-center gap-4 shadow-2xl">
-            <button 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="p-2.5 bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-all shadow-lg"
-            >
-                {isPlaying ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                )}
-            </button>
-            
-            <div className="flex-1 flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weather Timeline</span>
-                    <span className="text-xs font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20">{timeString}</span>
-                </div>
-                <input 
-                    type="range" 
-                    min="0" 
-                    max={frames.length - 1} 
-                    value={frameIndex} 
-                    onChange={(e) => setFrameIndex(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all"
-                />
-            </div>
-        </div>
-    );
-  };
 
   const SettingsPanel = () => (
       <div className="absolute top-0 right-0 h-full w-80 bg-black/90 backdrop-blur-2xl border-l border-white/10 p-6 transform transition-transform duration-300 z-40 overflow-y-auto pointer-events-auto shadow-2xl">
@@ -398,6 +361,47 @@ const MapView: React.FC<MapViewProps> = ({ latitude, longitude, onClose, openWea
     );
   };
 
+  const renderTimeMachine = () => {
+    if (frames.length === 0 || activeProvider !== 'rainviewer') return null;
+    
+    const currentFrame = frames[frameIndex];
+    const date = currentFrame ? new Date(currentFrame.time * 1000) : null;
+    const timeString = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    
+    return (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-2xl pointer-events-auto z-20 flex items-center gap-4 shadow-2xl">
+            <button 
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="p-2.5 bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-all shadow-lg"
+            >
+                {isPlaying ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                )}
+            </button>
+            
+            <div className="flex-1 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Weather Timeline</span>
+                    <span className="text-xs font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded border border-blue-400/20">{timeString}</span>
+                </div>
+                <input 
+                    type="range" 
+                    min="0" 
+                    max={frames.length - 1} 
+                    value={frameIndex} 
+                    onChange={(e) => {
+                        setFrameIndex(parseInt(e.target.value));
+                        setIsPlaying(false);
+                    }}
+                    className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-all"
+                />
+            </div>
+        </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black pointer-events-none overflow-hidden font-sans">
       {/* HUD Header */}
@@ -423,7 +427,7 @@ const MapView: React.FC<MapViewProps> = ({ latitude, longitude, onClose, openWea
       {/* Panels */}
       {isSettingsOpen && <SettingsPanel />}
       <LocationDetailPanel />
-      <TimeMachine />
+      {renderTimeMachine()}
 
       {/* Map Container */}
       <div ref={mapContainerRef} className="flex-1 w-full h-full bg-[#0a0a0a] pointer-events-auto" />
