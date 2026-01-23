@@ -1,6 +1,6 @@
 {
   "name": "WeatherGPT",
-  "description": "Next Gen Weather AI",
+  "description": "Advanced AI Assistant with Real-time Weather, Image & Video Generation",
   "requestFramePermissions": [
     "microphone",
     "geolocation"

@@ -6,6 +6,8 @@ import MessageItem from './components/MessageItem';
 import SettingsModal from './components/SettingsModal';
 import LocationSuggestions from './components/LocationSuggestions';
 import MapView from './components/MapView';
+import ImageCreationModal from './components/ImageCreationModal';
+import ImageGallery from './components/ImageGallery';
 import { ChatSession, Message, Settings, WeatherAlert, VideoResult, ImageResult } from './types';
 import { streamResponse, parseModelResponse, generateTitle } from './services/weatherService';
 import { generateSpeech, playAudio } from './services/ttsService';
@@ -34,6 +36,16 @@ const App: React.FC = () => {
   const [mapCoordinates, setMapCoordinates] = useState<{ lat: number, lng: number } | null>(null);
   const [mapLocationName, setMapLocationName] = useState<string>('');
   const [attachment, setAttachment] = useState<{ data: string; mimeType: string } | null>(null);
+  
+  // Image Feature States
+  const [isImageCreationOpen, setIsImageCreationOpen] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<any[]>([]);
+
+  // Loading & Saving States
+  const [isSessionsLoading, setIsSessionsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [settings, setSettings] = useState<Settings>({
@@ -96,38 +108,49 @@ const App: React.FC = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-        (error) => console.warn("Geolocation permission denied or failed.", error),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        (error) => {
+           console.warn("Geolocation warning:", error.message || error.code || "Unknown error");
+        },
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 600000 }
       );
     }
   }, []);
 
+  // Initialize Data
   useEffect(() => {
     try {
       const savedSessions = localStorage.getItem('weather-gpt-sessions');
       const savedSessionId = localStorage.getItem('weather-gpt-current-session-id');
       const savedSettings = localStorage.getItem('weather-gpt-settings');
       const savedHistory = localStorage.getItem('weather-gpt-location-history');
+      const savedImages = localStorage.getItem('weather-gpt-gallery');
 
       if (savedSettings) setSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
       if (savedHistory) setLocationHistory(JSON.parse(savedHistory));
+      if (savedImages) setGalleryImages(JSON.parse(savedImages));
       
       const parsedSessions = savedSessions ? JSON.parse(savedSessions) : [];
       if (parsedSessions.length > 0) {
         setSessions(parsedSessions);
         setCurrentSessionId(savedSessionId || parsedSessions[0].id);
       }
-    } catch (error) { console.error("Failed to load from localStorage", error); }
+    } catch (error) { 
+        console.error("Failed to load from localStorage", error); 
+    } finally {
+        setTimeout(() => setIsSessionsLoading(false), 500);
+    }
   }, []);
 
+  // Auto-Save Effect
   useEffect(() => {
     if (sessions.length > 0) localStorage.setItem('weather-gpt-sessions', JSON.stringify(sessions));
     if (currentSessionId) localStorage.setItem('weather-gpt-current-session-id', currentSessionId);
     localStorage.setItem('weather-gpt-settings', JSON.stringify(settings));
     localStorage.setItem('weather-gpt-location-history', JSON.stringify(locationHistory));
+    localStorage.setItem('weather-gpt-gallery', JSON.stringify(galleryImages));
     
     document.documentElement.className = `theme-${settings.theme}`;
-  }, [sessions, currentSessionId, settings, locationHistory]);
+  }, [sessions, currentSessionId, settings, locationHistory, galleryImages]);
 
   const updateMessages = useCallback((sessionId: string, messageUpdater: (messages: Message[]) => Message[]) => {
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, messages: messageUpdater(s.messages) } : s));
@@ -177,6 +200,32 @@ const App: React.FC = () => {
     setSessions(prev => [newSession, ...prev]);
     setCurrentSessionId(newSessionId);
   }, [settings.defaultModel]);
+
+  const handleDeleteChat = useCallback((sessionId: string) => {
+    const updatedSessions = sessions.filter(s => s.id !== sessionId);
+    setSessions(updatedSessions);
+    if (currentSessionId === sessionId) {
+        const nextSessionId = updatedSessions.length > 0 ? updatedSessions[0].id : null;
+        setCurrentSessionId(nextSessionId);
+        if (nextSessionId) {
+            localStorage.setItem('weather-gpt-current-session-id', nextSessionId);
+        } else {
+            localStorage.removeItem('weather-gpt-current-session-id');
+        }
+    }
+    if (updatedSessions.length === 0) {
+        localStorage.removeItem('weather-gpt-sessions');
+    }
+  }, [sessions, currentSessionId]);
+
+  const handleManualSave = useCallback(() => {
+    setIsSaving(true);
+    setTimeout(() => {
+        localStorage.setItem('weather-gpt-sessions', JSON.stringify(sessions));
+        localStorage.setItem('weather-gpt-settings', JSON.stringify(settings));
+        setIsSaving(false);
+    }, 800);
+  }, [sessions, settings]);
 
   const handlePlayAudio = useCallback(async (messageId: string, text: string, restartListeningAfter = false) => {
     if (!currentSessionId) return;
@@ -244,6 +293,8 @@ const App: React.FC = () => {
       const imageUrl = await generateImage(request, attachment);
       if (imageUrl) {
         onUpdate({ status: 'done', url: imageUrl });
+        // Save to gallery
+        setGalleryImages(prev => [{ id: uuidv4(), url: imageUrl, prompt: request.prompt, timestamp: Date.now() }, ...prev]);
       } else {
         onUpdate({ status: 'error', error: "Model returned empty content." });
       }
@@ -284,7 +335,7 @@ const App: React.FC = () => {
       attachment: attachment || undefined
     };
 
-    const currentAttachment = attachment; // Capture current for async block
+    const currentAttachment = attachment; 
 
     const aiMessageId = uuidv4();
     const aiMessagePlaceholder: Message = { id: aiMessageId, role: 'model', content: '', isStreaming: true, timestamp: Date.now(), audioState: 'idle' };
@@ -462,7 +513,7 @@ const App: React.FC = () => {
             id="chat-input"
             rows={1} 
             className="flex-1 max-h-[100px] py-2 bg-transparent placeholder-[color:var(--text-secondary)] focus:outline-none resize-none z-10" 
-            placeholder={isListening ? (settings.conversationalMode ? "Conversational Mode Active..." : "Listening...") : (attachment ? "Describe how to edit this image..." : "Ask me anything about weather...")} 
+            placeholder={isListening ? (settings.conversationalMode ? "Conversational Mode Active..." : "Listening...") : (attachment ? "Describe how to edit this image..." : "Ask any question...")} 
             value={input} 
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(input); } }}
             onChange={(e) => {
@@ -505,7 +556,13 @@ const App: React.FC = () => {
         currentSessionId={currentSessionId}
         onNewChat={handleNewChat}
         onSelectChat={(id) => setCurrentSessionId(id)}
+        onDeleteChat={handleDeleteChat}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onSaveChats={handleManualSave}
+        isSessionsLoading={isSessionsLoading}
+        isSaving={isSaving}
+        onOpenImageCreation={() => setIsImageCreationOpen(true)}
+        onOpenGallery={() => setIsGalleryOpen(true)}
       />
       <SettingsModal 
         isOpen={isSettingsOpen}
@@ -518,6 +575,20 @@ const App: React.FC = () => {
         onGenerateBackground={handleGenerateBackground}
         isGenerating={isLoading}
         generationError={imageGenerationError}
+        sessions={sessions}
+      />
+      
+      <ImageCreationModal 
+        isOpen={isImageCreationOpen}
+        onClose={() => setIsImageCreationOpen(false)}
+        onGenerate={(prompt, aspectRatio) => handleSendMessage(`Generate an image of ${prompt} with aspect ratio ${aspectRatio}`)}
+      />
+
+      <ImageGallery 
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+        images={galleryImages}
+        onDelete={(id) => setGalleryImages(prev => prev.filter(img => img.id !== id))}
       />
 
       {isMapOpen && mapCoordinates && (
@@ -533,7 +604,7 @@ const App: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        <div className="flex items-center p-2 text-[color:var(--text-primary)] bg-[color:var(--bg-main)]/80 backdrop-blur-sm border-b border-[color:var(--border-color)] md:hidden z-10">
+        <div className="flex items-center p-2 text-[color:var(--text-primary)] bg-[color:var(--bg-main)]/80 backdrop-blur-sm border-b border-[color:var(--border-color)] z-10">
            <button className="p-2 -ml-2 rounded-md hover:bg-white/5" onClick={() => setSidebarOpen(true)}>
              <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" className="h-6 w-6"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
            </button>
@@ -551,20 +622,23 @@ const App: React.FC = () => {
                </div>
               <h2 className="text-2xl font-semibold mb-2">WeatherGPT</h2>
               <p className="text-[color:var(--text-secondary)] max-w-lg mb-8">
-                Your advanced AI meteorologist. Forecasts, charts, and visualizations powered by Gemini.
+                The world's most advanced AI assistant. Ask questions about weather, coding, history, or anything else.
               </p>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-xl text-sm">
-                 <button onClick={() => handleSendMessage("What's the weather in Tokyo?")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left">
+                 <button onClick={() => handleSendMessage("What's the weather in Tokyo?")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left border border-white/5">
                    "What's the weather in Tokyo?" →
                  </button>
-                 <button onClick={() => handleSendMessage("Visualize a storm over the ocean.")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left">
-                   "Visualize a storm..." →
+                 <button onClick={() => handleSendMessage("Explain why the sky is blue.")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left border border-white/5">
+                   "Explain why the sky is blue..." →
                  </button>
-                 <button onClick={() => handleSendMessage("Compare the climate of Paris and London.")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left">
-                   "Compare Paris and London..." →
+                 <button onClick={() => handleSendMessage("Write a python script to sort a list.")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left border border-white/5">
+                   "Write a python script..." →
                  </button>
-                  <button onClick={() => handleSendMessage("Explain the impact of El Niño.")} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left">
-                   "Explain the impact of El Niño..." →
+                  <button onClick={() => setIsImageCreationOpen(true)} className="bg-white/5 hover:bg-white/10 p-3 rounded-lg transition-colors text-left border border-white/5 group">
+                   <span className="flex items-center gap-2">
+                     <svg className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                     Create AI Image →
+                   </span>
                  </button>
                </div>
             </div>
@@ -598,7 +672,7 @@ const App: React.FC = () => {
               }}
             />
             {chatInputForm}
-            <div className="text-center text-xs text-[color:var(--text-secondary)] mt-2">AI can make mistakes. Consider checking important information.</div>
+            <div className="text-center text-xs text-[color:var(--text-secondary)] mt-2">WeatherGPT can make mistakes. Verify important safety information.</div>
           </div>
         </div>
       </div>
